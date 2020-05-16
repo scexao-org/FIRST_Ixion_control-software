@@ -14,7 +14,7 @@ with the following canvas:
         '''
         command = "a.function-name(" + str(input-parameter) + ")"
         self._send(command) 
-TES
+
 """
 
 import time
