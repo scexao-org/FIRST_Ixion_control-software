@@ -1,0 +1,3 @@
+## files to be ignored when push
+
+./__pycache__
