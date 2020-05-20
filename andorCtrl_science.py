@@ -49,7 +49,7 @@ class AndorCtrl(Thread):
         self.live_pause     = False
 
         self.width          = 512
-        self.height         = 100
+        self.height         = 512
 
         self.data           = np.zeros([self.height, self.width])
         self.dark           = np.zeros([self.width, self.height])
