@@ -100,37 +100,6 @@ class ComPortSUB(Thread):
         super().start()
 
 
-"""
-class ComPortSUB(Thread):
-    def __init__(self):
-        Thread.__init__(self)
-        self.running = False
-        global andor_pub
-
-    def _creation_socket(self):
-        self.context = zmq.Context()
-        self.sub = self.context.socket(zmq.SUB)
-        self.sub.connect(port_SUB)
-        self.sub.setsockopt(zmq.SUBSCRIBE, b"A")
-        andor_pub.pprint("Com receiver is initialized")
-
-    def run(self):
-        self._creation_socket()
-        self.running = True
-        while self.running:
-            [address, command] = self.sub.recv_multipart()
-            try:
-                exec(command)
-            except Exception as cur_exception:
-                andor_pub.pprint(MyException(cur_exception))
-
-    def stop(self):
-        andor_pub.pprint("Com receiver is closed")
-        self.running = False
-        self.sub.close()
-        self.context.term()
-"""
-
 
 ################################################################################
 ##################              Publisher class             ####################
@@ -156,26 +125,6 @@ class ComPortPUB(object):
         self.pprint("done()")
         self.pub.close()
         self.context.term()
-
-
-"""
-class ComPortPUB(object):
-    def __init__(self):
-        self.context = zmq.Context()
-        self.pub = self.context.socket(zmq.PUB)
-        self.pub.bind("tcp://*:5551")
-        self.pprint("\nCom transmitter is initialized")
-
-    def pprint(self, message):
-        time.sleep(1)# need time to sleep before sending a message
-        self.pub.send_multipart([client_adress, str(message).encode('UTF-8')])
-
-    def stop(self):
-        self.pprint("Com transmitter is closed")
-        self.pprint("done()")
-        self.pub.close()
-        self.context.term()
-"""
 
 
 ################################################################################
