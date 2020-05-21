@@ -16,8 +16,6 @@ import andorCtrl_science as aCs
 import andorDisplay_science as aDs
 
 
-
-
 ################################################################################
 ##################            Communication class           ####################
 ################################################################################
@@ -38,9 +36,11 @@ class MyException(BaseException):
 ################################################################################
 
 
-port_SUB = "tcp://localhost:5550"
-port_PUB = "tcp://*:5551"
-client_adress = b"B"
+port_SUB_cmd = "tcp://localhost:5550"
+andor_address = b"A"
+
+port_PUB_print = "tcp://*:5552"
+print_adress = b"P"
 
 
 """
@@ -51,6 +51,56 @@ client_adress = b"B"
 
 """
 
+
+class ComPortSUB(Thread):
+    def __init__(self, publisher, port_SUB, address):
+        super().__init__()
+        self.running = True
+
+        self.pub = publisher
+        self.port = port_SUB
+        self.address = address
+
+        global a
+
+        self.start()
+
+    def _creation_socket(self):
+        self.context = zmq.Context()
+        self.sub = self.context.socket(zmq.SUB)
+        self.sub.connect(self.port)
+        self.sub.setsockopt(zmq.SUBSCRIBE, b'')
+        self.pub.pprint("Com receiver is initialized (address: %s)" % (self.port))
+
+    def run(self):
+        self._creation_socket()
+        while self.running:
+            cmd_dict = self.sub.recv_pyobj()
+            if cmd_dict["address"] == self.address:
+                cmd_dict.pop("address")
+                try:
+                    if cmd_dict["command"] == "done()":
+                        self.running = False
+                        done()
+                    else:
+                        command = getattr(a, cmd_dict["command"])
+                        cmd_dict.pop("command")
+                        command(**cmd_dict)
+                except Exception as cur_exception:
+                    self.pub.pprint(MyException(cur_exception))
+            else:
+                pass
+
+    def stop(self):
+        self.pub.pprint("Com receiver is closed (address: %s)" % (self.port))
+        self.sub.close()
+        self.context.term()
+
+    def start(self):
+        super().start()
+
+
+"""
 class ComPortSUB(Thread):
     def __init__(self):
         Thread.__init__(self)
@@ -79,9 +129,36 @@ class ComPortSUB(Thread):
         self.running = False
         self.sub.close()
         self.context.term()
+"""
 
 
+################################################################################
+##################              Publisher class             ####################
+################################################################################
 
+
+class ComPortPUB(object):
+    def __init__(self, port_PUB, client_address):
+        self.port = port_PUB
+        self.address = client_address
+
+        self.context = zmq.Context()
+        self.pub = self.context.socket(zmq.PUB)
+        self.pub.bind(self.port)
+        self.pprint("\n\nCom transmitter is initialized (address: %s)" % (self.port))
+
+    def pprint(self, message):
+        time.sleep(1)# need time to sleep before sending a message
+        self.pub.send_multipart([self.address, str(message).encode('UTF-8')])
+
+    def stop(self):
+        self.pprint("Com transmitter is closed (address: %s)" % (self.port))
+        self.pprint("done()")
+        self.pub.close()
+        self.context.term()
+
+
+"""
 class ComPortPUB(object):
     def __init__(self):
         self.context = zmq.Context()
@@ -98,6 +175,7 @@ class ComPortPUB(object):
         self.pprint("done()")
         self.pub.close()
         self.context.term()
+"""
 
 
 ################################################################################
@@ -109,7 +187,7 @@ def done():
     andor_pub.pprint("Shutting down Camera....")
     a.stop()
     camera.AbortAcquisition()
-    camera.SetShutter(0,2,300,100)
+    camera.SetShutter(0, 2, 300, 100)
     camera.ShutDown()
     andor_sub.stop()
     andor_pub.pprint("Camera shut down COMPLETE")
@@ -124,11 +202,11 @@ def done():
 
 if __name__ == "__main__":
     ### Initialize the communication transmitter ###
-    andor_pub = ComPortPUB()
+    andor_pub = ComPortPUB(port_PUB_print, print_address)
 
 
     ### Initialize the communication receiver ###
-    andor_sub = ComPortSUB()
+    andor_sub = ComPortSUB(andor_pub, port_SUB_cmd, andor_address)
     andor_sub.start()
 
     

@@ -15,25 +15,120 @@ import time
 import os
 import zmq
 from threading import Thread
+from adorCtrl_science import AndorCtrl
 
 
 ################################################################################
-##################		                                    ####################
+##################             Global variables             ####################
 ################################################################################
 
 
-port_PUB = "tcp://*:5550"
+# Communication
+port_PUB_comps = "tcp://*:5550"
+port_PUB_print = "tcp://*:5551"
+
+client_address_print = b"P"
 client_address_andor = b"A"
-client_address_print = b"B"
 
-component_address = {'andor': client_address_andor, 'print': client_address_print, 'cmd': 'cmd'}
+component_address = {'print': client_address_print, 
+                     'andor': client_address_andor, 
+                     'cmd': 'cmd'}
+
+
+################################################################################
+##################           Decorators definition          ####################
+################################################################################
+
+
+def add_command(comp_method):
+    def decorator(original_method):
+        def modified_func(*args, **kwargs):
+            kwargs['command'] = comp_method
+            return original_method(*args, **kwargs)
+
+        return modified_func
+
+    return decorator
+
+
+def cmd_compatibility():
+    def decorator(cmd_method):
+        """The decorator."""
+
+        def modified_func(*args, **kwargs):
+            """Check if the given arguments (args and kwargs) correspond
+            to those needed to comp_method."""
+
+            # Retrieve the component method
+            comp_method = kwargs['command']
+
+            # Retrieve the args and the kwargs of the component method
+            comp_kwargs = dict()
+
+            comp_arguments = comp_method.__code__.co_varnames
+            comp_kwargs_value = list(comp_method.__defaults__)
+
+            len_diff = len(comp_arguments) - len(comp_kwargs_value)  # Nbre of unamed arguments
+            for comp_kw in range(len(comp_kwargs_value) - 1, -1, -1):
+                comp_kwargs[comp_arguments[comp_kw + len_diff]] = comp_kwargs_value[comp_kw]
+
+            # for comp_arg in range(len_diff):
+            #     comp_args[comp_arg] = comp_arguments[comp_arg]
+            # comp_args = tuple(comp_args)
+
+            # The list of the expected arguments (comp_args) has to be of same length
+            # as the one put by the user in command (args)
+            if len_diff != len(args):
+                raise TypeError("{0}() takes {1} positional argument but {2} were given"
+                                .format(comp_method.__name__, len_diff, len(args)))
+
+            # Check if the given kwargs (kwargs) are the same as the expected ones (comp_kwargs)
+            for key in kwargs:
+                if (key != 'command') and (key not in comp_kwargs):
+                    raise TypeError("{0}() got an unexpected keyword argument '{1}'".format(comp_method.__name__, key))
+
+            return cmd_method(*args, **kwargs)
+
+        return modified_func
+
+    return decorator
+
+
+################################################################################
+##################              Command class               ####################
+################################################################################
+
+
+class FirstCommand:
+    def __init__(self, comp_class, publisher, address):
+        self.comp_class = comp_class
+        self.pub = publisher
+        self.client_address = address
+
+        # Retrieve the methods of the component class
+        comp_class_dict = self.comp_class.__dict__
+
+        # Set all the methods according to the component class
+        for key, value in comp_class_dict.items():
+            if not key.startswith('__'):
+                self.__dict__[key] = add_command(value)(self.send_pyobj_cmd)
+
+    @cmd_compatibility()
+    def send_pyobj_cmd(self, *args, **kwargs):
+        """
+        Customised send_pyobj() function, embedding the address and sending parameters.
+        Look at the scripts named as "*ctrl.py" to have help for functions.
+        """
+        kwargs["address"] = self.client_address
+        kwargs['command'] = kwargs['command'].__name__
+        self.pub.send_pyobj(kwargs)
 
 
 ################################################################################
 ##################		                                    ####################
 ################################################################################
 
-
+"""
 class AndorCmd(Thread):
     def __init__(self, publisher, address):
         self.client_address = address
@@ -248,25 +343,48 @@ class AndorCmd(Thread):
     def acq_cube(self, N_frames, exptime, filename=None):
         command = "a.acq_cube(" + str(N_frames) + "," + str(exptime) + ",filename='" + str(filename) + "')"
         self._send(command)
-
+"""
 
 ################################################################################
 ##################             Global functions             ####################
 ################################################################################
 
 
+def close(component, **kwargs):
+    command = "done()"
+    if component == 'print':
+        pub_print.send_multipart([component_address[component], command.encode('UTF-8')])
+    elif component == 'cmd':
+        publisher_comps.close()
+        pub_print.close()
+        context.term()
+        os._exit(1)
+    else:
+        kwargs["address"] = component_address[component]
+        kwargs["command"] = command
+        publisher_comps.send_pyobj(kwargs)
+
+
+def done():
+    for key in component_address:
+        if key != 'cmd':
+            close(key)
+    else:
+        close('cmd')
+
+"""
 def close(component):
     '''
     Close 'component' process.
     '''
     if component == 'andor':
-        publisher.send_multipart([component_address['print'], "".encode('UTF-8')])
+        publisher_comps.send_multipart([component_address['print'], "".encode('UTF-8')])
     elif component == 'cmd':
-        publisher.close()
+        publisher_comps.close()
         context.term()
         os._exit(1)
     command = "done()"
-    publisher.send_multipart([component_address[component], command.encode('UTF-8')])
+    publisher_comps.send_multipart([component_address[component], command.encode('UTF-8')])
 
 
 def done():
@@ -279,8 +397,8 @@ def done():
 
 def pprint(msg):
     command = "andor_pub.pprint(" + str(msg) + ")"
-    publisher.send_multipart([client_address, command.encode('UTF-8')])
-
+    publisher_comps.send_multipart([client_address, command.encode('UTF-8')])
+"""
 
 ################################################################################
 ##################               Main process               ####################
@@ -298,12 +416,13 @@ def pprint(msg):
 if __name__ == "__main__":
     ### Initialize com ###
     context = zmq.Context()
-    publisher = context.socket(zmq.PUB)
-    publisher.bind(port_PUB)
+    publisher_comps = context.socket(zmq.PUB)
+    publisher_comps.bind(port_PUB)
 
 
     ### Initialise the andor command class ###
-    a = AndorCmd(publisher, client_address_andor)
+    # a = AndorCmd(publisher_comps, client_address_andor)
+    a = FirstCommand(AndorCtrl, publisher_comps, client_address_andor)
 
 
     ### Print the top messages in the terminal ###
@@ -313,4 +432,11 @@ if __name__ == "__main__":
     print("Type pprint() to print. It will be printed in the other terminal.")
     print("Type done() to disconnect the camera and close viewing")
     print("Start entering commands only when the other terminal indicates camera is initialized.\n")
-    
+
+
+    ### Initialise com with the print terminal ###
+    pub_print = context.socket(zmq.PUB)
+    pub_print.bind(port_PUB_print)
+
+    time.sleep(0.1)
+    pub_print.send_multipart([client_address_print, "".encode('UTF-8')])
