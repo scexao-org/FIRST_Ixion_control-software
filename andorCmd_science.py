@@ -3,17 +3,11 @@
 ################################################################################
 """
 This program calls the control functions for the Andor camera
-written in the file "andorCtrl_science.py"
+written in the file "andorCtrl_science.py".
 
-Every time a function is written for the Andor control, it should be copied here 
-with the following canvas:
-
-    def function-name(self, input-parameter):
-        '''
-        Function description
-        '''
-        command = "a.function-name(" + str(input-parameter) + ")"
-        self._send(command) 
+It allows the user to type commands with their names in order to execute
+them and send a corresponding command to the script "andorCtrl_science.py"
+in which it will be executed.
 
 """
 
