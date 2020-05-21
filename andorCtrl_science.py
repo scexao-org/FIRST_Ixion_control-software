@@ -177,6 +177,8 @@ class AndorCtrl(Thread):
         self.cam.StartAcquisition()
         super().start()
 
+        os.system('shmImshow.py ixionim &')
+        
         self.pub.pprint("Andor iXon Initialised\n")
 
     def start(self):
@@ -203,6 +205,8 @@ class AndorCtrl(Thread):
         super().start()
 
         self.pub.pprint("Andor iXon Initialised\n")
+
+        os.system('shmImshow.py ixionim &')
 
     def stop(self):
         self.running = False

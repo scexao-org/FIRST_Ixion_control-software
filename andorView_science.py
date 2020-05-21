@@ -163,10 +163,10 @@ if __name__ == "__main__":
     a.start_cropmode()
 
     
-    ###	Initialize the plot application ###
-    Qt_app = aDs.QtWidgets.QApplication(sys.argv)
-    app = aDs.ApplicationWindow()
-    app.set_andorCtrl(a)
-    app.set_publisher(andor_pub)
-    app.show()
-    Qt_app.exec_()
+    # ###	Initialize the plot application ###
+    # Qt_app = aDs.QtWidgets.QApplication(sys.argv)
+    # app = aDs.ApplicationWindow()
+    # app.set_andorCtrl(a)
+    # app.set_publisher(andor_pub)
+    # app.show()
+    # Qt_app.exec_()
