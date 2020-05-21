@@ -40,7 +40,7 @@ port_SUB_cmd = "tcp://localhost:5550"
 andor_address = b"A"
 
 port_PUB_print = "tcp://*:5552"
-print_adress = b"P"
+print_address = b"P"
 
 
 """
@@ -207,7 +207,6 @@ if __name__ == "__main__":
 
     ### Initialize the communication receiver ###
     andor_sub = ComPortSUB(andor_pub, port_SUB_cmd, andor_address)
-    andor_sub.start()
 
     
     ### Initialize Andor camera ###
@@ -241,6 +240,7 @@ if __name__ == "__main__":
     a.start_cropmode()
 
     
+    """
     ###	Initialize the plot application ###
     Qt_app = aDs.QtWidgets.QApplication(sys.argv)
     app = aDs.ApplicationWindow()
@@ -248,3 +248,4 @@ if __name__ == "__main__":
     app.set_publisher(andor_pub)
     app.show()
     Qt_app.exec_()
+    """

@@ -15,7 +15,7 @@ import time
 import os
 import zmq
 from threading import Thread
-from adorCtrl_science import AndorCtrl
+from andorCtrl_science import AndorCtrl
 
 
 ################################################################################
@@ -55,7 +55,7 @@ def cmd_compatibility():
     def decorator(cmd_method):
         """The decorator."""
 
-        def modified_func(*args, **kwargs):
+        def modified_func(self, *args, **kwargs):
             """Check if the given arguments (args and kwargs) correspond
             to those needed to comp_method."""
 
@@ -63,31 +63,32 @@ def cmd_compatibility():
             comp_method = kwargs['command']
 
             # Retrieve the args and the kwargs of the component method
-            comp_kwargs = dict()
-
             comp_arguments = comp_method.__code__.co_varnames
-            comp_kwargs_value = list(comp_method.__defaults__)
+            len_arguments = comp_method.__code__.co_argcount
+            comp_kwargs_value = comp_method.__defaults__
 
-            len_diff = len(comp_arguments) - len(comp_kwargs_value)  # Nbre of unamed arguments
-            for comp_kw in range(len(comp_kwargs_value) - 1, -1, -1):
-                comp_kwargs[comp_arguments[comp_kw + len_diff]] = comp_kwargs_value[comp_kw]
+            # Check if the given kwargs (kwargs) are the same as the expected ones (comp_arguments)
+            if comp_kwargs_value is not None:
+                len_diff = len_arguments - len(comp_kwargs_value)  # Nbre of unamed arguments
 
-            # for comp_arg in range(len_diff):
-            #     comp_args[comp_arg] = comp_arguments[comp_arg]
-            # comp_args = tuple(comp_args)
+                for key in kwargs:
+                    if (key != 'command') and (key not in comp_arguments[len_diff:]):
+                        raise TypeError("{0}() got an unexpected keyword argument '{1}'"
+                            .format(comp_method.__name__, key))
+            else:
+                len_diff = len_arguments
+            
+            if len_diff > 1:
+                # Check if there is the right number of expected arguments given
+                if len_diff - 1 != len(args):
+                    raise TypeError("{0}() takes {1} positional argument but {2} were given"
+                                    .format(comp_method.__name__, len_diff - 1, len(args)))
 
-            # The list of the expected arguments (comp_args) has to be of same length
-            # as the one put by the user in command (args)
-            if len_diff != len(args):
-                raise TypeError("{0}() takes {1} positional argument but {2} were given"
-                                .format(comp_method.__name__, len_diff, len(args)))
+                # Put the unamed arguments in kwargs
+                for i in range(1, len_diff):
+                    kwargs[comp_arguments[i]] = args[i-1]
 
-            # Check if the given kwargs (kwargs) are the same as the expected ones (comp_kwargs)
-            for key in kwargs:
-                if (key != 'command') and (key not in comp_kwargs):
-                    raise TypeError("{0}() got an unexpected keyword argument '{1}'".format(comp_method.__name__, key))
-
-            return cmd_method(*args, **kwargs)
+            return cmd_method(self, *args, **kwargs)
 
         return modified_func
 
@@ -119,8 +120,10 @@ class FirstCommand:
         Customised send_pyobj() function, embedding the address and sending parameters.
         Look at the scripts named as "*ctrl.py" to have help for functions.
         """
-        kwargs["address"] = self.client_address
         kwargs['command'] = kwargs['command'].__name__
+        kwargs["address"] = self.client_address
+        for key, value in kwargs.items():
+            print(key, value)
         self.pub.send_pyobj(kwargs)
 
 
@@ -417,7 +420,7 @@ if __name__ == "__main__":
     ### Initialize com ###
     context = zmq.Context()
     publisher_comps = context.socket(zmq.PUB)
-    publisher_comps.bind(port_PUB)
+    publisher_comps.bind(port_PUB_comps)
 
 
     ### Initialise the andor command class ###
