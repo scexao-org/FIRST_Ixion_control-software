@@ -189,6 +189,7 @@ if __name__ == "__main__":
     a.start_cropmode()
 
     
+
     """
     ###	Initialize the plot application ###
     Qt_app = aDs.QtWidgets.QApplication(sys.argv)
@@ -198,3 +199,4 @@ if __name__ == "__main__":
     app.show()
     Qt_app.exec_()
     """
+
