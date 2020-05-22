@@ -45,9 +45,9 @@ def add_command(comp_method):
         def modified_func(*args, **kwargs):
             kwargs['command'] = comp_method
             return original_method(*args, **kwargs)
-
+        modified_func.__doc__ = original_method.__doc__
+        modified_func.__doc__ += comp_method.__doc__
         return modified_func
-
     return decorator
 
 
@@ -87,11 +87,8 @@ def cmd_compatibility():
                 # Put the unamed arguments in kwargs
                 for i in range(1, len_diff):
                     kwargs[comp_arguments[i]] = args[i-1]
-
             return cmd_method(self, *args, **kwargs)
-
         return modified_func
-
     return decorator
 
 
@@ -116,10 +113,7 @@ class FirstCommand:
 
     @cmd_compatibility()
     def send_pyobj_cmd(self, *args, **kwargs):
-        """
-        Customised send_pyobj() function, embedding the address and sending parameters.
-        Look at the scripts named as "*ctrl.py" to have help for functions.
-        """
+        # Customised send_pyobj() function, embedding the address and parameters sending.
         kwargs['command'] = kwargs['command'].__name__
         kwargs["address"] = self.client_address
         for key, value in kwargs.items():
