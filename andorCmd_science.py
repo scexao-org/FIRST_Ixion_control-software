@@ -45,8 +45,10 @@ def add_command(comp_method):
         def modified_func(*args, **kwargs):
             kwargs['command'] = comp_method
             return original_method(*args, **kwargs)
-        modified_func.__doc__ = original_method.__doc__
-        modified_func.__doc__ += comp_method.__doc__
+        # Set the doctring to the component method one
+        if comp_method.__doc__ is not None:
+            modified_func.__doc__ = original_method.__doc__
+            modified_func.__doc__ = comp_method.__doc__
         return modified_func
     return decorator
 
@@ -113,11 +115,12 @@ class FirstCommand:
 
     @cmd_compatibility()
     def send_pyobj_cmd(self, *args, **kwargs):
+        """ """
         # Customised send_pyobj() function, embedding the address and parameters sending.
         kwargs['command'] = kwargs['command'].__name__
         kwargs["address"] = self.client_address
-        for key, value in kwargs.items():
-            print(key, value)
+        #for key, value in kwargs.items():
+        #    print(key, value)
         self.pub.send_pyobj(kwargs)
 
 
