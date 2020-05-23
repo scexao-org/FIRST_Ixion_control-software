@@ -135,9 +135,9 @@ class ComPortPUB(object):
 def done():
     andor_pub.pprint("Shutting down Camera....")
     a.stop()
-    camera.AbortAcquisition()
-    camera.SetShutter(0, 2, 300, 100)
-    camera.ShutDown()
+    #camera.AbortAcquisition()
+    #camera.SetShutter(0, 2, 300, 100)
+    #camera.ShutDown()
     andor_sub.stop()
     andor_pub.pprint("Camera shut down COMPLETE")
     andor_pub.stop()
