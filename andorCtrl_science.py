@@ -464,7 +464,7 @@ class AndorCtrl(Thread):
 
 
 
-    def acq_cube(self, N_frames, exptime, filename=None):
+    def acq_cube_old(self, N_frames, exptime, filename=None):
         self.set_exptime(exptime)
         ## WARNIING : WIDTH AND HEIGHT HAVE BEEN SWAPPED BECAUSE I TAKE TRANSPOSE OF EACH IMAGE
         #imCube   = np.zeros((N_frames, self.width, self.height)) 
@@ -499,7 +499,7 @@ class AndorCtrl(Thread):
 
         os.system("ds9 " + SAVEFILEPATH + final_filename + ".fits &")
 
-    def acq_cube_test(self, N_frames, filename=None):
+    def acq_cube(self, N_frames, filename=None):
         exptime = self.get_exptime()
 
         if filename is None:
