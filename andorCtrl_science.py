@@ -499,24 +499,12 @@ class AndorCtrl(Thread):
 
         os.system("ds9 " + SAVEFILEPATH + final_filename + ".fits &")
 
-    def acq_cube_test(self, N_frames, exptime, filename=None):
-        self.set_exptime(exptime)
-        imCube = self.ixionim.multi_recv_data(N_frames)#, outputFormat=0, monitorCount=True)
-        imCube = np.array(imCube)
-        print(np.shape(imCube))
+    def acq_cube_test(self, N_frames, filename=None):
+        exptime = self.get_exptime()
 
         if filename is None:
             final_filename = str(int(1000 * time.time())) + "_datacube"
         else:
             final_filename = filename
 
-        self.pub.pprint('Acquisition over...')
-        header = fits.Header()
-        header['ExpTime'] = np.round(exptime, decimals=3)
-        header['Gain'] = self.cam.gain
-        header['Temp'] = self.cam.temperature
-        fits.writeto(SAVEFILEPATH + final_filename + '.fits', imCube, header, overwrite=True)
-        self.pub.pprint("Image saved in '" + SAVEFILEPATH + final_filename + ".fits'\n")
-
-        os.system("ds9 " + SAVEFILEPATH + final_filename + ".fits &")
-
+        os.system('python ixionSaveCube.py '+str(N_frames)+' '+str(exptime)+' '+str(self.cam.gain)+' '+str(self.cam.temperature)+' '+str(final_filename)+' '+str(SAVEFILEPATH))
