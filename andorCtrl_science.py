@@ -48,11 +48,18 @@ class AndorCtrl(Thread):
         self.data_ready     = False
         self.live_pause     = False
 
+
         self.width          = 512
         self.height         = 512
 
-        self.data           = np.zeros([self.height, self.width])
-        self.dark           = np.zeros([self.width, self.height])
+        self.vbin           = 1
+        self.hbin           = 2
+
+        self.ReadMode       = 4
+        self.AcqMode        = 5 
+
+        self.data           = np.zeros([np.int(self.height/self.vbin), np.int(self.width/self.hbin)])
+        self.dark           = np.zeros([np.int(self.height/self.vbin), np.int(self.width/self.hbin)])
         self.rawdark        = []
 
         self.c_min          = None
@@ -74,16 +81,20 @@ class AndorCtrl(Thread):
         self.FLUX_P2VM      = None
 
         ## Create shared memories for images and darks
-        self.ixionim        = SHM('ixionim',   ((self.width, self.height), np.float64), location = -1, shared = 1)
-        self.ixiondark      = SHM('ixiondark', ((self.width, self.height), np.float64), location = -1, shared = 1)
+        #self.ixionim        = SHM('ixionim',   ((self.width, self.height), np.float64), location = -1, shared = 1)
+        #self.ixiondark      = SHM('ixiondark', ((self.width, self.height), np.float64), location = -1, shared = 1)
+
+        self.ixionim        = SHM('ixionim',   ((np.int(self.height/self.vbin), np.int(self.width/self.hbin)), np.float64), location = -1, shared = 1)
+        self.ixiondark      = SHM('ixiondark', ((np.int(self.height/self.vbin), np.int(self.width/self.hbin)), np.float64), location = -1, shared = 1)
+
 
 
     def run(self):
         while self.running:
             if not self.live_pause:
-                self.rawdata = np.zeros([self.width*self.height], dtype=np.float64)
+                self.rawdata = np.zeros([np.int((self.width/self.hbin)*(self.height/self.vbin))], dtype=np.float64)
                 self.cam.GetMostRecentImage(self.rawdata)
-                self.data = np.reshape(self.cam.imageArray, (self.height,self.width))# - self.dark
+                self.data = np.reshape(self.cam.imageArray, (np.int(self.height/self.hbin), np.int(self.width/self.vbin)))# - self.dark
 
                 ## Write the image in the shared memory
                 self.ixionim.set_data(self.data.astype(np.float64))
@@ -154,12 +165,12 @@ class AndorCtrl(Thread):
         if self.cam is None:
             raise Exception("Camera not connected!")
 
-        self.cam.SetReadMode(4)
-        self.cam.SetAcquisitionMode(5)
+        self.cam.SetReadMode(self.ReadMode)
+        self.cam.SetAcquisitionMode(self.AcqMode)
 
         self.cam.SetKineticCycleTime(0)
         self.cam.SetIsolatedCropMode(1, self.height, self.width, 1,1)
-        self.cam.SetImage(1, 1, 1, self.height, 1, self.width)
+        self.cam.SetImage(self.vbin, self.hbin, 1, self.height, 1, self.width)
 
         self.cam.SetShutter(0, 1, 50, 50)
         self.cam.SetExposureTime(DEFAULT_EXP_TIME)
@@ -314,16 +325,41 @@ class AndorCtrl(Thread):
 
         *WARNING* - Careful when subtracting darks as they will no longer match.
         '''
-        self.cam.GetMaximumExposure()
+        # self.cam.GetMaximumExposure()
         #self.pub.pprint("The maximum exposure time is %f s." % self.cam.max_exp)
         self.cam.AbortAcquisition()
-        time.sleep(0.5)
+        # time.sleep(0.5)
+        # self.cam.SetExposureTime(exptime)
+        # time.sleep(0.5)
+
+        self.cam.SetReadMode(self.ReadMode)
+        self.cam.SetAcquisitionMode(self.AcqMode)
+
+        self.cam.SetKineticCycleTime(0)
+        self.cam.SetIsolatedCropMode(1, self.height, self.width, 1,1)
+        self.cam.SetImage(self.vbin, self.hbin, 1, self.height, 1, self.width)
         self.cam.SetExposureTime(exptime)
-        time.sleep(0.5)
-        self.set_video_scan()
-        time.sleep(0.2)
+        self.cam.SetShutter(0, 1, 50, 50)
+
+
+
+        self.cam.GetEMGainRange()
+        self.cam.GetEMCCDGain()
+        self.cam.GetNumberPreAmpGains()
+        self.cam.GetPreAmpGain()
+        self.cam.GetStatus()
+
         self.cam.StartAcquisition()
-        time.sleep(0.2+exptime)
+
+
+
+
+        # self.set_video_scan()
+        # time.sleep(0.2)
+        # self.cam.StartAcquisition()
+
+
+        #time.sleep(0.2+exptime)
         #self.set_shutter_CLOSED()
         #self.acq_new_dark()
         #self.set_shutter_OPEN()
