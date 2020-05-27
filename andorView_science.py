@@ -187,7 +187,7 @@ if __name__ == "__main__":
     andor_pub.pprint("Detector is cooling down to %d °C..." % (cooling_temp))
 
     # Starts Video Feed
-    a.start_cropmode()
+    a.start()
 
     
 

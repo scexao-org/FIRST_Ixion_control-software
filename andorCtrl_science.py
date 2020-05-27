@@ -179,7 +179,7 @@ class AndorCtrl(Thread):
         #
         self.live_pause = True
 
-    def start_cropmode(self):
+    def start(self):
         '''
         Starts the video display.
         '''
@@ -191,7 +191,6 @@ class AndorCtrl(Thread):
 
         self.cam.SetKineticCycleTime(0)
         self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
-        #self.cam.SetImage(self.hbin, self.vbin, self.Lower_left_X, self.Lower_left_X+self.width-1, self.Lower_left_Y, self.Lower_left_Y+self.height-1)
         self.cam.SetImage(self.hbin, self.vbin, self.Lower_left_X, self.Lower_left_X+np.int(self.width)-1, self.Lower_left_Y, self.Lower_left_Y+np.int(self.height)-1)
         #self.cam.SetImage( ??bin , SPECTRAL_bin, ??start, OPD_DIM, ??, SPECTRAL_DIM)
 
@@ -216,33 +215,6 @@ class AndorCtrl(Thread):
         super().start()
         os.system('shmImshow.py ixionim &')
         self.pub.pprint("Andor iXon Initialised\n")
-
-    def start(self):
-        '''
-        Starts the video display.
-        '''
-        if self.cam is None:
-            raise Exception("Camera not connected!")
-
-        self.cam.SetExposureTime(DEFAULT_EXP_TIME)
-        self.set_video_scan()
-        self.cam.SetShutter(0, 1, 300, 100)
-
-        self.cam.GetEMGainRange()
-        self.cam.GetEMCCDGain()
-
-        self.pub.pprint("\n")
-        self.pub.pprint("Camera Gain: ")
-        self.pub.pprint(str(self.cam.gain))
-        self.cam.GetNumberPreAmpGains()
-        self.cam.GetPreAmpGain()
-        self.cam.GetStatus()
-        self.cam.StartAcquisition()
-        super().start()
-
-        self.pub.pprint("Andor iXon Initialised\n")
-
-        os.system('shmImshow.py ixionim &')
 
     def stop(self):
         self.running = False
@@ -555,7 +527,6 @@ class AndorCtrl(Thread):
         os.system("ds9 " + SAVEFILEPATH + final_filename + ".fits &")
 
     def acq_dark(self):
-
         self.cam.SetShutter(0, 2, 50, 50)
         time.sleep(0.2)
         self.cam.GetMostRecentImage(self.rawdata)
