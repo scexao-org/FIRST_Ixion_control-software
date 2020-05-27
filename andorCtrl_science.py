@@ -31,9 +31,9 @@ DEFAULT_EXP_TIME    = 0.001
 
 
 WIDTH_IMAGE         = 512
-HEIGHT_IMAGE        = 512
-VERTICAL_BINNING    = 1
-HORIZONTAL_BINNING  = 2 # Spectral direction
+HEIGHT_IMAGE        = 200 # Spectral direction
+VERTICAL_BINNING    = 4   # Spectral direction
+HORIZONTAL_BINNING  = 1 
 READ_MODE           = 4
 ACQUISITION_MODE    = 5  
 LOWER_LEFT_X        = 1
@@ -72,8 +72,8 @@ class AndorCtrl(Thread):
         self.Lower_left_X   = LOWER_LEFT_X
         self.Lower_left_Y   = LOWER_LEFT_Y
 
-        self.data           = np.zeros([np.int(self.height/self.vbin), np.int(self.width/self.hbin)])
-        self.dark           = np.zeros([np.int(self.height/self.vbin), np.int(self.width/self.hbin)])
+        self.data           = np.zeros([np.int(self.width/self.hbin), np.int(self.height/self.vbin)])
+        self.dark           = np.zeros([np.int(self.width/self.hbin), np.int(self.height/self.vbin)])
         self.rawdark        = []
 
         self.c_min          = None
@@ -96,13 +96,10 @@ class AndorCtrl(Thread):
 
         self.exposure_time  = DEFAULT_EXP_TIME
 
-        ## Create shared memories for images and darks
-        #self.ixionim        = SHM('ixionim',   ((self.width, self.height), np.float64), location = -1, shared = 1)
-        #self.ixiondark      = SHM('ixiondark', ((self.width, self.height), np.float64), location = -1, shared = 1)
-        self.rawdata = np.zeros([np.int((self.width/self.hbin)*(self.height/self.vbin))], dtype=np.float64)
+        self.rawdata        = np.zeros( [np.int( (self.width/self.hbin) * (self.height/self.vbin) ) ], dtype=np.float64)
 
-        self.ixionim        = SHM('ixionim',   ((np.int(self.height/self.vbin), np.int(self.width/self.hbin)), np.float64), location = -1, shared = 1)
-        self.ixiondark      = SHM('ixiondark', ((np.int(self.height/self.vbin), np.int(self.width/self.hbin)), np.float64), location = -1, shared = 1)
+        self.ixionim        = SHM('ixionim',   ((np.int(self.width/self.hbin), np.int(self.height/self.vbin)), np.float64), location = -1, shared = 1)
+        self.ixiondark      = SHM('ixiondark', ((np.int(self.width/self.hbin), np.int(self.height/self.vbin)), np.float64), location = -1, shared = 1)
 
 
 
@@ -110,19 +107,18 @@ class AndorCtrl(Thread):
         while self.running:
             if not self.live_pause:
                 while True:
-
                     self.cam.GetMostRecentImage(self.rawdata)
                     getimerr = self.cam.GetMostRecentImage_error
                     if getimerr == 20002 or self.live_pause:
                         break
-                    #time.sleep(.002)
-                time.sleep(self.exposure_time)
+                # self.cam.FreeInternalMemory()
+                time.sleep(self.cam.accu_cycle_time+self.exposure_time)
 
                 #self.data = np.reshape(self.cam.imageArray, (np.int(self.height/self.hbin), np.int(self.width/self.vbin)))# - self.dark
                 #self.pub.pprint(self.data.shape)
                 # Write the image in the shared memory
                 #self.ixionim.set_data(self.data.astype(np.float64))
-                self.ixionim.set_data(np.reshape(self.cam.imageArray, (np.int(self.height/self.hbin), np.int(self.width/self.vbin))))
+                self.ixionim.set_data(np.reshape(self.cam.imageArray, ( np.int(self.height/self.vbin), np.int(self.width/self.hbin))) ) ## Somehow width and height are inverted
 
             self.data_ready = True
 
@@ -194,12 +190,18 @@ class AndorCtrl(Thread):
         self.cam.SetAcquisitionMode(self.AcqMode)
 
         self.cam.SetKineticCycleTime(0)
-        #self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
-        self.cam.SetImage(self.vbin, self.hbin, self.Lower_left_X, self.Lower_left_X+self.height-1, self.Lower_left_Y, self.Lower_left_Y+self.width-1)
+        self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
+        #self.cam.SetImage(self.hbin, self.vbin, self.Lower_left_X, self.Lower_left_X+self.width-1, self.Lower_left_Y, self.Lower_left_Y+self.height-1)
+        self.cam.SetImage(self.hbin, self.vbin, 1, np.int(self.width), 1, np.int(self.height))
+        #self.cam.SetImage( ??bin , SPECTRAL_bin, ??start, OPD_DIM, ??, SPECTRAL_DIM)
 
         self.cam.SetShutter(0, 1, 50, 50)
         self.cam.SetExposureTime(DEFAULT_EXP_TIME)
 
+        self.cam.GetAcquisitionTimings()
+        self.pub.pprint("Actual exposure time: "+str(self.cam.exp_time))
+        self.pub.pprint("Actual accu cycle time: "+str(self.cam.accu_cycle_time))
+        self.pub.pprint("Actual kine cycle time: "+str(self.cam.kinetic_cycle_time))
 
         self.cam.GetEMGainRange()
         self.cam.GetEMCCDGain()
@@ -363,8 +365,8 @@ class AndorCtrl(Thread):
         self.cam.SetKineticCycleTime(0)
 
         # Set the Image parameters
-        self.cam.SetIsolatedCropMode(1, self.height, self.width, 1,1)
-        self.cam.SetImage(self.vbin, self.hbin, 1, self.height, 1, self.width)
+        self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
+        self.cam.SetImage(self.hbin, self.vbin, 1, np.int(self.width), 1, np.int(self.height))
         self.cam.SetExposureTime(exptime)
         self.cam.SetShutter(0, 1, 50, 50)
 
@@ -375,6 +377,11 @@ class AndorCtrl(Thread):
         self.cam.GetNumberPreAmpGains()
         self.cam.GetPreAmpGain()
         self.cam.GetStatus()
+
+        self.cam.GetAcquisitionTimings()
+        self.pub.pprint("Actual exposure time: "+str(self.cam.exp_time))
+        self.pub.pprint("Actual accu cycle time: "+str(self.cam.accu_cycle_time))
+        self.pub.pprint("Actual kine cycle time: "+str(self.cam.kinetic_cycle_time))
 
         self.cam.StartAcquisition()
 
