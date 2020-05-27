@@ -23,8 +23,8 @@ print(str(exptime)+' ms')
 
 # Defines the shared mem where the images are + create image cube
 im = SHM('ixionim')
-imCube = im.multi_recv_data(N_frames)#, outputFormat=0, monitorCount=True)
-imCube = np.array(imCube)
+imCube = im.multi_recv_data(N_frames, outputFormat=1)
+#imCube = np.array(imCube)
 
 print('Cube acquisition over...')
 
