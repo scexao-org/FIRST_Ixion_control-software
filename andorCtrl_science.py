@@ -31,13 +31,13 @@ DEFAULT_EXP_TIME    = 0.001
 
 
 WIDTH_IMAGE         = 512
-HEIGHT_IMAGE        = 200 # Spectral direction
-VERTICAL_BINNING    = 4   # Spectral direction
+HEIGHT_IMAGE        = 150 # Spectral direction
+VERTICAL_BINNING    = 3   # Spectral direction
 HORIZONTAL_BINNING  = 1 
 READ_MODE           = 4
 ACQUISITION_MODE    = 5  
 LOWER_LEFT_X        = 1
-LOWER_LEFT_Y        = 1     
+LOWER_LEFT_Y        = 300  # Spectral direction 
 
 
 
@@ -192,7 +192,7 @@ class AndorCtrl(Thread):
         self.cam.SetKineticCycleTime(0)
         self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
         #self.cam.SetImage(self.hbin, self.vbin, self.Lower_left_X, self.Lower_left_X+self.width-1, self.Lower_left_Y, self.Lower_left_Y+self.height-1)
-        self.cam.SetImage(self.hbin, self.vbin, 1, np.int(self.width), 1, np.int(self.height))
+        self.cam.SetImage(self.hbin, self.vbin, self.Lower_left_X, self.Lower_left_X+np.int(self.width)-1, self.Lower_left_Y, self.Lower_left_Y+np.int(self.height)-1)
         #self.cam.SetImage( ??bin , SPECTRAL_bin, ??start, OPD_DIM, ??, SPECTRAL_DIM)
 
         self.cam.SetShutter(0, 1, 50, 50)
@@ -366,7 +366,7 @@ class AndorCtrl(Thread):
 
         # Set the Image parameters
         self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
-        self.cam.SetImage(self.hbin, self.vbin, 1, np.int(self.width), 1, np.int(self.height))
+        self.cam.SetImage(self.hbin, self.vbin, self.Lower_left_X, self.Lower_left_X+np.int(self.width)-1, self.Lower_left_Y, self.Lower_left_Y+np.int(self.height)-1)
         self.cam.SetExposureTime(exptime)
         self.cam.SetShutter(0, 1, 50, 50)
 
