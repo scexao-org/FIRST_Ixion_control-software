@@ -249,7 +249,7 @@ class AndorCtrl(Thread):
         self.cam.AbortAcquisition()
         self.cam.SetShutter(0,2,300,100)
         self.cam.ShutDown()
-        os.system('pkill shmImshow.py')
+        os.system("pkill -f 'shmImshow.py ixionim'")
         self.join()
 
 
