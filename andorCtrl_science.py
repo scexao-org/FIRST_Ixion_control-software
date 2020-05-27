@@ -557,6 +557,17 @@ class AndorCtrl(Thread):
         os.system("ds9 " + SAVEFILEPATH + final_filename + ".fits &")
 
 
+    def acq_dark(self):
+
+        self.cam.SetShutter(0, 2, 50, 50)
+        time.sleep(0.2)
+        self.cam.GetMostRecentImage(self.rawdata)
+        self.ixiondark.set_data(np.reshape(self.cam.imageArray, ( np.int(self.height/self.vbin), np.int(self.width/self.hbin))) ) ## Somehow width and height are inverted
+        self.cam.SetShutter(0, 1, 50, 50)
+
+
+
+
     def acq_cube(self, N_frames, filename=None):
         exptime = self.get_exptime()
 
