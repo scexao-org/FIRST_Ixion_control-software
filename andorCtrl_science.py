@@ -74,19 +74,19 @@ class AndorCtrl(Thread):
         self.FLUX_P2VM      = None
 
         ## Create shared memories for images and darks
-        self.ixionim        = SHM('ixionim',   ((self.width, self.height), np.float32), location = -1, shared = 1)
-        self.ixiondark      = SHM('ixiondark', ((self.width, self.height), np.float32), location = -1, shared = 1)
+        self.ixionim        = SHM('ixionim',   ((self.width, self.height), np.float64), location = -1, shared = 1)
+        self.ixiondark      = SHM('ixiondark', ((self.width, self.height), np.float64), location = -1, shared = 1)
 
 
     def run(self):
         while self.running:
             if not self.live_pause:
-                self.rawdata = np.zeros([self.width*self.height], dtype=np.float32)
+                self.rawdata = np.zeros([self.width*self.height], dtype=np.float64)
                 self.cam.GetMostRecentImage(self.rawdata)
                 self.data = np.reshape(self.cam.imageArray, (self.height,self.width))# - self.dark
 
                 ## Write the image in the shared memory
-                self.ixionim.set_data(self.data.astype(np.float32))
+                self.ixionim.set_data(self.data.astype(np.float64))
 
             self.data_ready = True
 
