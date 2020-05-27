@@ -26,8 +26,7 @@ im = SHM('ixionim')
 imCube = im.multi_recv_data(N_frames)#, outputFormat=0, monitorCount=True)
 imCube = np.array(imCube)
 
-
-print('Acquisition over...')
+print('Cube acquisition over...')
 
 # Save and display the cube
 header = fits.Header()

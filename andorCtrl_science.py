@@ -463,7 +463,6 @@ class AndorCtrl(Thread):
         time.sleep(0.2)
 
 
-
     def acq_cube_old(self, N_frames, exptime, filename=None):
         self.set_exptime(exptime)
         ## WARNIING : WIDTH AND HEIGHT HAVE BEEN SWAPPED BECAUSE I TAKE TRANSPOSE OF EACH IMAGE
@@ -499,6 +498,7 @@ class AndorCtrl(Thread):
 
         os.system("ds9 " + SAVEFILEPATH + final_filename + ".fits &")
 
+
     def acq_cube(self, N_frames, filename=None):
         exptime = self.get_exptime()
 
@@ -508,3 +508,18 @@ class AndorCtrl(Thread):
             final_filename = filename
 
         os.system('python ixionSaveCube.py '+str(N_frames)+' '+str(exptime)+' '+str(self.cam.gain)+' '+str(self.cam.temperature)+' '+str(final_filename)+' '+str(SAVEFILEPATH))
+
+    def acq_cube_multi(self, N_cubes, N_frames, filename=None):
+
+        for i in range(N_cubes):
+
+            print('Acquisition of cube '+str(i+1))
+
+            if filename is None:
+                final_filename = str(int(1000 * time.time())) + "_datacube_"+str(i)
+            else:
+                final_filename = filename+'_'+str(i)
+
+            self.acq_cube(N_frames,filename = final_filename)
+
+
