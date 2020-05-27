@@ -214,9 +214,7 @@ class AndorCtrl(Thread):
         self.cam.GetStatus()
         self.cam.StartAcquisition()
         super().start()
-
         os.system('shmImshow.py ixionim &')
-        
         self.pub.pprint("Andor iXon Initialised\n")
 
     def start(self):
@@ -251,6 +249,7 @@ class AndorCtrl(Thread):
         self.cam.AbortAcquisition()
         self.cam.SetShutter(0,2,300,100)
         self.cam.ShutDown()
+        os.system('pkill shmImshow.py')
         self.join()
 
 
@@ -520,7 +519,6 @@ class AndorCtrl(Thread):
         self.cam.StartAcquisition()
         time.sleep(0.2)
 
-
     def acq_cube_old(self, N_frames, exptime, filename=None):
         self.set_exptime(exptime)
         ## WARNIING : WIDTH AND HEIGHT HAVE BEEN SWAPPED BECAUSE I TAKE TRANSPOSE OF EACH IMAGE
@@ -556,7 +554,6 @@ class AndorCtrl(Thread):
 
         os.system("ds9 " + SAVEFILEPATH + final_filename + ".fits &")
 
-
     def acq_dark(self):
 
         self.cam.SetShutter(0, 2, 50, 50)
@@ -564,9 +561,6 @@ class AndorCtrl(Thread):
         self.cam.GetMostRecentImage(self.rawdata)
         self.ixiondark.set_data(np.reshape(self.cam.imageArray, ( np.int(self.height/self.vbin), np.int(self.width/self.hbin))) ) ## Somehow width and height are inverted
         self.cam.SetShutter(0, 1, 50, 50)
-
-
-
 
     def acq_cube(self, N_frames, filename=None):
         exptime = self.get_exptime()

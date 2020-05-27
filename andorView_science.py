@@ -141,6 +141,7 @@ def done():
     andor_sub.stop()
     andor_pub.pprint("Camera shut down COMPLETE")
     andor_pub.stop()
+
     os._exit(1)
 
 
