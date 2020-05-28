@@ -43,7 +43,7 @@ class ComPortSUB(Thread):
         self.port = port_dict
         self.address = address
 
-        self.connected_pub = list()
+        self.connected_pub = ['cmd']
         self.subscriber_context = dict()
 
         # Prepare our context and sockets
@@ -90,7 +90,7 @@ class ComPortSUB(Thread):
                     if contents_UTF == "done()":
                         self.connected_pub.pop(self.connected_pub.index(component))
                         self.running = False
-                    elif contents_UTF == "close()":
+                    elif contents_UTF == "forcequit":
                         # Empty the list to exit the while loop
                         self.connected_pub = []
                         self.running = False
