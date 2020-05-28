@@ -130,10 +130,12 @@ class FirstCommand:
 ################################################################################
 
 
-def close(component, **kwargs):
+def close(component, force_quit=False):
     """Close 'component' process"""
     command = "done()"
     if component == 'print':
+        if force_quit:
+            command = "forcequit"
         pub_print.send_multipart([component_address[component], command.encode('UTF-8')])
     elif component == 'cmd':
         publisher_comps.close()
@@ -141,8 +143,7 @@ def close(component, **kwargs):
         context.term()
         os._exit(1)
     else:
-        kwargs["address"] = component_address[component]
-        kwargs["command"] = command
+        kwargs = {"address": component_address[component], "command": command}
         publisher_comps.send_pyobj(kwargs)
 
 
@@ -197,6 +198,3 @@ if __name__ == "__main__":
     ### Initialise com with the print terminal ###
     pub_print = context.socket(zmq.PUB)
     pub_print.bind(port_PUB_print)
-
-    time.sleep(0.1)
-    pub_print.send_multipart([client_address_print, "".encode('UTF-8')])
