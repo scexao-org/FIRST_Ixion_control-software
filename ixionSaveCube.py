@@ -25,6 +25,7 @@ print(str(exptime)+' ms')
 im = SHM('ixionim')
 imCube = im.multi_recv_data(N_frames, outputFormat=1)
 #imCube = np.array(imCube)
+imCube = imCube.transpose(0,2,1)
 
 print('Cube acquisition over...')
 
