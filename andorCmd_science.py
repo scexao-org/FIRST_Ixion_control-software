@@ -36,7 +36,7 @@ component_address = {'print': client_address_print,
 
 
 ################################################################################
-##################           Decorators definition          ####################
+##################           Decorator definitions          ####################
 ################################################################################
 
 
@@ -76,7 +76,7 @@ def cmd_compatibility():
                 for key in kwargs:
                     if (key != 'command') and (key not in comp_arguments[len_diff:]):
                         raise TypeError("{0}() got an unexpected keyword argument '{1}'"
-                            .format(comp_method.__name__, key))
+                                        .format(comp_method.__name__, key))
             else:
                 len_diff = len_arguments
             
