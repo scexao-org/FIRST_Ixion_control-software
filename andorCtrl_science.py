@@ -111,13 +111,8 @@ class AndorCtrl(Thread):
                     getimerr = self.cam.GetMostRecentImage_error
                     if getimerr == 20002 or self.live_pause:
                         break
-                # self.cam.FreeInternalMemory()
                 time.sleep(self.cam.accu_cycle_time+self.exposure_time)
-
-                #self.data = np.reshape(self.cam.imageArray, (np.int(self.height/self.hbin), np.int(self.width/self.vbin)))# - self.dark
-                #self.pub.pprint(self.data.shape)
                 # Write the image in the shared memory
-                #self.ixionim.set_data(self.data.astype(np.float64))
                 self.ixionim.set_data(np.reshape(self.cam.imageArray, ( np.int(self.height/self.vbin), np.int(self.width/self.hbin))) ) ## Somehow width and height are inverted
 
             self.data_ready = True
@@ -356,7 +351,6 @@ class AndorCtrl(Thread):
 
         self.cam.StartAcquisition()
 
-
     def get_exptime(self):
         #exp_time = self.cam.GetExpTime()
         self.cam.GetAcquisitionTimings()
@@ -430,8 +424,6 @@ class AndorCtrl(Thread):
         self.cam.SetHorizontalSpeed(index)
 
 
-
-
     #-------------------------------------------------------------------------
     #  Display options
     #-------------------------------------------------------------------------
@@ -462,7 +454,38 @@ class AndorCtrl(Thread):
     #  Data / Darks acquisition
     #-------------------------------------------------------------------------
 
-    def acq_new_dark(self):
+
+    def acq_dark(self):
+        self.cam.SetShutter(0, 2, 50, 50)
+        time.sleep(0.2)
+        self.cam.GetMostRecentImage(self.rawdata)
+        self.ixiondark.set_data(np.reshape(self.cam.imageArray, ( np.int(self.height/self.vbin), np.int(self.width/self.hbin))) ) ## Somehow width and height are inverted
+        self.cam.SetShutter(0, 1, 50, 50)
+
+    def acq_cube(self, N_frames, filename=None):
+        exptime = self.get_exptime()
+
+        if filename is None:
+            final_filename = str(int(1000 * time.time())) + "_datacube"
+        else:
+            final_filename = filename
+
+        os.system('python ixionSaveCube.py '+str(N_frames)+' '+str(exptime)+' '+str(self.cam.gain)+' '+str(self.cam.temperature)+' '+str(final_filename)+' '+str(SAVEFILEPATH))
+
+    def acq_cube_multi(self, N_cubes, N_frames, filename=None):
+
+        for i in range(N_cubes):
+
+            print('Acquisition of cube '+str(i+1))
+
+            if filename is None:
+                final_filename = str(int(1000 * time.time())) + "_datacube_"+str(i)
+            else:
+                final_filename = filename+'_'+str(i)
+
+            self.acq_cube(N_frames,filename = final_filename)
+
+    def acq_dark_old(self):
         '''
         Acquires a new dark frame for automatic subtraction on the video feed.
         The Dark is taken of whatever is on the detector at the time so make sure you turn the source off.
@@ -525,35 +548,3 @@ class AndorCtrl(Thread):
         self.pub.pprint("Image saved in '" + SAVEFILEPATH + final_filename + ".fits'\n")
 
         os.system("ds9 " + SAVEFILEPATH + final_filename + ".fits &")
-
-    def acq_dark(self):
-        self.cam.SetShutter(0, 2, 50, 50)
-        time.sleep(0.2)
-        self.cam.GetMostRecentImage(self.rawdata)
-        self.ixiondark.set_data(np.reshape(self.cam.imageArray, ( np.int(self.height/self.vbin), np.int(self.width/self.hbin))) ) ## Somehow width and height are inverted
-        self.cam.SetShutter(0, 1, 50, 50)
-
-    def acq_cube(self, N_frames, filename=None):
-        exptime = self.get_exptime()
-
-        if filename is None:
-            final_filename = str(int(1000 * time.time())) + "_datacube"
-        else:
-            final_filename = filename
-
-        os.system('python ixionSaveCube.py '+str(N_frames)+' '+str(exptime)+' '+str(self.cam.gain)+' '+str(self.cam.temperature)+' '+str(final_filename)+' '+str(SAVEFILEPATH))
-
-    def acq_cube_multi(self, N_cubes, N_frames, filename=None):
-
-        for i in range(N_cubes):
-
-            print('Acquisition of cube '+str(i+1))
-
-            if filename is None:
-                final_filename = str(int(1000 * time.time())) + "_datacube_"+str(i)
-            else:
-                final_filename = filename+'_'+str(i)
-
-            self.acq_cube(N_frames,filename = final_filename)
-
-
