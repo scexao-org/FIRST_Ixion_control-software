@@ -28,16 +28,17 @@ from pyMilk.interfacing.isio_shmlib import SHM
 
 SAVEFILEPATH        = '/home/first/Documents/FIRST-DATA/'
 DEFAULT_EXP_TIME    = 0.001
+DEFAULT_GAIN        = 0
 
 
 WIDTH_IMAGE         = 512
-HEIGHT_IMAGE        = 150 # Spectral direction
-VERTICAL_BINNING    = 3   # Spectral direction
+HEIGHT_IMAGE        = 200 # Spectral direction
+VERTICAL_BINNING    = 1   # Spectral direction
 HORIZONTAL_BINNING  = 1 
 READ_MODE           = 4
 ACQUISITION_MODE    = 5  
 LOWER_LEFT_X        = 1
-LOWER_LEFT_Y        = 300  # Spectral direction 
+LOWER_LEFT_Y        = 256  # Spectral direction 
 
 
 
@@ -95,6 +96,7 @@ class AndorCtrl(Thread):
         self.FLUX_P2VM      = None
 
         self.exposure_time  = DEFAULT_EXP_TIME
+        self.gain           = DEFAULT_GAIN  
 
         self.rawdata        = np.zeros( [np.int( (self.width/self.hbin) * (self.height/self.vbin) ) ], dtype=np.float64)
 
@@ -190,19 +192,28 @@ class AndorCtrl(Thread):
         #self.cam.SetImage( ??bin , SPECTRAL_bin, ??start, OPD_DIM, ??, SPECTRAL_DIM)
 
         self.cam.SetShutter(0, 1, 50, 50)
-        self.cam.SetExposureTime(DEFAULT_EXP_TIME)
-
-        self.cam.GetAcquisitionTimings()
-        self.pub.pprint("Actual exposure time: "+str(self.cam.exp_time))
-        self.pub.pprint("Actual accu cycle time: "+str(self.cam.accu_cycle_time))
-        self.pub.pprint("Actual kine cycle time: "+str(self.cam.kinetic_cycle_time))
+        self.cam.SetExposureTime(self.exposure_time)
 
         self.cam.GetEMGainRange()
+        #self.cam.GetEMCCDGain()
+        if self.gain > self.cam.gainRange[1]:
+            self.pub.pprint("WARNING : Gain of "+str(self.gain)+" is too high. You need to lower your ambition ;-) ")
+            self.pub.pprint("Highest available gain: "+str(self.cam.gainRange[1]))
+            self.pub.pprint("Gain value changed to 0,")
+            self.gain = 0
+        self.cam.SetEMCCDGain(self.gain)
+
+
+        self.cam.GetAcquisitionTimings()
         self.cam.GetEMCCDGain()
+        self.pub.pprint("Actual exposure time: "+str(self.cam.exp_time))
+        #self.pub.pprint("Actual accu cycle time: "+str(self.cam.accu_cycle_time))
+        self.pub.pprint("Actual kine cycle time: "+str(self.cam.kinetic_cycle_time))
+        self.pub.pprint("Camera gain: "+str(self.cam.gain))
 
         self.pub.pprint("\n")
-        self.pub.pprint("Camera Gain: ")
-        self.pub.pprint(str(self.cam.gain))
+        #self.pub.pprint("Camera Gain: ")
+        #self.pub.pprint(str(self.gain))
         self.cam.GetNumberPreAmpGains()
         self.cam.GetPreAmpGain()
         self.cam.GetStatus()
@@ -300,7 +311,7 @@ class AndorCtrl(Thread):
         self.cam.SetMultiTrack(number, height, offset, bottom, gap)
 
     #-------------------------------------------------------------------------
-    #  Exposure time
+    #  Exposure time // Gain
     #-------------------------------------------------------------------------
 
     def set_exptime(self, exptime):
@@ -320,7 +331,8 @@ class AndorCtrl(Thread):
         '''
 
         self.exposure_time = exptime
-
+        self.cam.GetEMCCDGain()
+        gain = self.cam.gain
         # Stop the acquisition
         self.cam.AbortAcquisition()
 
@@ -336,18 +348,19 @@ class AndorCtrl(Thread):
         self.cam.SetExposureTime(exptime)
         self.cam.SetShutter(0, 1, 50, 50)
 
-
-
         self.cam.GetEMGainRange()
-        self.cam.GetEMCCDGain()
         self.cam.GetNumberPreAmpGains()
         self.cam.GetPreAmpGain()
+        self.cam.SetEMCCDGain(self.gain)
         self.cam.GetStatus()
 
         self.cam.GetAcquisitionTimings()
+        self.cam.GetEMCCDGain()
+
         self.pub.pprint("Actual exposure time: "+str(self.cam.exp_time))
-        self.pub.pprint("Actual accu cycle time: "+str(self.cam.accu_cycle_time))
+        #self.pub.pprint("Actual accu cycle time: "+str(self.cam.accu_cycle_time))
         self.pub.pprint("Actual kine cycle time: "+str(self.cam.kinetic_cycle_time))
+        self.pub.pprint("Gain: "+str(self.cam.gain))
 
         self.cam.StartAcquisition()
 
@@ -357,6 +370,66 @@ class AndorCtrl(Thread):
         self.pub.pprint("Exposure time is %f s." % self.cam.exp_time)
         self.exposure_time = self.cam.exp_time
         return self.cam.exp_time
+
+
+    def set_gain(self, gain):
+        '''
+        TO DO
+        '''
+ 
+        
+        self.cam.GetEMGainRange()
+        if gain > self.cam.gainRange[1]:
+            self.pub.pprint("WARNING : Gain of "+str(self.gain)+" is too high. You need to lower your ambition ;-) ")
+            self.pub.pprint("Highest available gain: "+str(self.cam.gainRange[1]))
+
+        else:
+            self.gain = gain
+            
+            self.cam.GetAcquisitionTimings()
+            exptime = self.cam.exp_time
+            # Stop the acquisition
+            self.cam.AbortAcquisition()
+
+            # Set the Read mode and the acquisition mode
+            self.cam.SetReadMode(self.ReadMode)
+            self.cam.SetAcquisitionMode(self.AcqMode)
+
+            self.cam.SetKineticCycleTime(0)
+
+            # Set the Image parameters
+            self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
+            self.cam.SetImage(self.hbin, self.vbin, self.Lower_left_X, self.Lower_left_X+np.int(self.width)-1, self.Lower_left_Y, self.Lower_left_Y+np.int(self.height)-1)
+
+            self.cam.SetExposureTime(exptime)
+            self.cam.SetShutter(0, 1, 50, 50)
+
+
+
+            self.cam.GetEMGainRange()
+
+            self.cam.GetNumberPreAmpGains()
+            self.cam.GetPreAmpGain()
+            self.cam.SetEMCCDGain(self.gain)
+            self.cam.GetStatus()
+            self.cam.GetAcquisitionTimings()
+            self.cam.GetEMCCDGain()
+            self.pub.pprint("Actual exposure time: "+str(self.cam.exp_time))
+            #self.pub.pprint("Actual accu cycle time: "+str(self.cam.accu_cycle_time))
+            self.pub.pprint("Actual kine cycle time: "+str(self.cam.kinetic_cycle_time))
+            self.pub.pprint("Gain: "+str(self.cam.gain))
+            
+
+            self.cam.StartAcquisition()
+
+
+    def get_gain(self):
+        #exp_time = self.cam.GetExpTime()
+        self.cam.GetEMCCDGain()
+        self.pub.pprint("Camera gain is %f ." % self.cam.gain)
+        self.gain = self.cam.gain
+        return self.cam.gain
+
 
 
     #-------------------------------------------------------------------------
