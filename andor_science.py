@@ -313,7 +313,7 @@ class Andor(object):
         self.imageArray = imageArray[:]
         return ERROR_CODE[error]
 
-
+    
 
 
     # Exposure time control
