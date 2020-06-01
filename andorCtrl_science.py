@@ -38,7 +38,7 @@ HORIZONTAL_BINNING  = 1
 READ_MODE           = 4
 ACQUISITION_MODE    = 5  
 LOWER_LEFT_X        = 1
-LOWER_LEFT_Y        = 256  # Spectral direction 
+LOWER_LEFT_Y        = 220  # Spectral direction 
 
 
 
