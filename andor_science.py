@@ -1,3 +1,4 @@
+# coding: utf-8
 ######################################
 ###### ANDOR iXon Python Wrapper #####
 ######################################
@@ -77,24 +78,6 @@ class Andor(object):
         self.GetCameraSerialNumber()
 
 
-        # Initialize the attributes
-        #cw                  = c_int()
-        #ch                  = c_int()
-        #self.dll.GetDetector(byref(cw), byref(ch))
-        #self.width          = cw.value
-        #self.height         = cw.value
-
-
-
-        #self.temperature    = None
-        #self.gain           = None
-        #self.gainRange      = None
-        #self.status         = None
-        #self.pixsize        = None
-        #self.numberframes   = 1
-        #self.maxbuffersize  = None
-        #self.max_exp        = 0.
-
     def __del__(self):
         print("Camera released.")
 
@@ -153,10 +136,10 @@ class Andor(object):
         return ERROR_CODE[error]
 
     def GetCameraSerialNumber(self):
-        '''
-        This function will retrieve camera’s serial number.
-        NOTE: works only after the camera is intialized.
-        '''
+        # '''
+        # This function will retrieve camera’s serial number.
+        # NOTE: works only after the camera is intialized.
+        # '''
         c_number = c_int()
         error = self.dll.GetCameraSerialNumber(byref(c_number))
         self.camera_serialnumber = c_number.value
@@ -216,6 +199,45 @@ class Andor(object):
         self.pixsize = (xSize.value, ySize.value)
         return ERROR_CODE[error]
 
+    def GetBitDepth(self):
+        c_bits = c_int()
+        error = self.dll.GetBitDepth(0, byref(c_bits))
+        self.bits = c_bits.value
+        return ERROR_CODE[error]
+
+    def GetHardwareVersion(self, PCB = 1, Decode = 1, dummy1 = 1, dummy2 = 1, CameraFirmwareVersion = 1, CameraFirmwareBuild = 1):
+        PCB                         = c_int()
+        Decode                      = c_int()
+        dummy1                      = c_int()
+        dummy2                      = c_int()
+        CameraFirmwareVersion       = c_int()
+        CameraFirmwareBuild         = c_int()
+        error                       = self.dll.GetHardwareVersion(byref(PCB), byref(Decode), byref(dummy1), byref(dummy2), byref(CameraFirmwareVersion), byref(CameraFirmwareBuild))
+        self.PCB                    = PCB.value
+        self.Decode                 = Decode.value
+        self.dummy1                 = dummy1.value
+        self.dummy2                 = dummy2.value
+        self.CameraFirmwareVersion  = CameraFirmwareVersion.value
+        self.CameraFirmwareBuild    = CameraFirmwareBuild.value
+        return ERROR_CODE[error]
+
+    def GetSoftwareVersion(self, eprom = 1, cofFile = 1, vxdRev = 1, vxdVer = 1, dllRev = 1, dllVer = 1):
+        eprom                       = c_int()
+        cofFile                     = c_int()
+        vxdRev                      = c_int()
+        vxdVer                      = c_int()
+        dllRev                      = c_int()
+        dllVer                      = c_int()
+        error                       = self.dll.GetHardwareVersion(byref(eprom), byref(cofFile), byref(vxdRev), byref(vxdVer), byref(dllRev), byref(dllVer))
+        self.eprom                  = eprom.value
+        self.cofFile                = cofFile.value
+        self.vxdRev                 = vxdRev.value
+        self.vxdVer                 = vxdVer.value
+        self.dllRev                 = dllRev.value
+        self.dllVer                 = dllVer.value
+        return ERROR_CODE[error]
+
+
     #-------------------------------------------------------------------------
     #  Temperature 
     #-------------------------------------------------------------------------
@@ -271,6 +293,10 @@ class Andor(object):
         error = self.dll.SetTriggerMode(mode)
         return ERROR_CODE[error]
 
+    def SetCameraLinkMode(self,mode):
+        error = self.dll.SetCameraLinkMode(mode)
+        self.set_camera_link_mode_error = error
+        return ERROR_CODE[error]
 
     # Acquisition process
 

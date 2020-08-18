@@ -1,3 +1,4 @@
+# coding: utf-8
 ################################################################################
 ##################      ANDOR iXon Live Viewer Control      ####################
 ################################################################################
@@ -14,8 +15,7 @@ from subprocess import call
 import os
 from tqdm import tqdm
 
-from andor_science import ERROR_CODE
-import andor_science as andors
+# from andor_science import ERROR_CODE
 
 ## Shared memory package
 from pyMilk.interfacing.isio_shmlib import SHM 
@@ -30,15 +30,22 @@ SAVEFILEPATH        = '/home/first/Documents/FIRST-DATA/'
 DEFAULT_EXP_TIME    = 0.001
 DEFAULT_GAIN        = 0
 
+READ_MODE           = 4
+ACQUISITION_MODE    = 5
+FRAME_TRANSFER_MODE = 0
 
-WIDTH_IMAGE         = 512
-HEIGHT_IMAGE        = 200 # Spectral direction
+WIDTH_IMAGE         = 512 # 510
+HEIGHT_IMAGE        = 200 # 204 # Spectral direction 200
+
+LOWER_LEFT_X        = 1
+LOWER_LEFT_Y        = 220 # 220  # Spectral direction 220
+
 VERTICAL_BINNING    = 1   # Spectral direction
 HORIZONTAL_BINNING  = 1 
-READ_MODE           = 4
-ACQUISITION_MODE    = 5  
-LOWER_LEFT_X        = 1
-LOWER_LEFT_Y        = 220  # Spectral direction 
+
+CAMERA_LINK         = 1
+
+# WARNING: DEBUGGING USING LINES AROUND ~200; CHECK BEFORE RESUMING STUFF
 
 
 
@@ -60,6 +67,8 @@ class AndorCtrl(Thread):
         self.data_ready     = False
         self.live_pause     = False
 
+        self.camera_link    = CAMERA_LINK
+
 
         self.width          = WIDTH_IMAGE
         self.height         = HEIGHT_IMAGE
@@ -69,6 +78,7 @@ class AndorCtrl(Thread):
 
         self.ReadMode       = READ_MODE
         self.AcqMode        = ACQUISITION_MODE 
+        self.ft_mode        = FRAME_TRANSFER_MODE
 
         self.Lower_left_X   = LOWER_LEFT_X
         self.Lower_left_Y   = LOWER_LEFT_Y
@@ -163,6 +173,17 @@ class AndorCtrl(Thread):
         '''
         self.cam = camera
 
+    def get_hardware_info(self):
+        get_hardware_info = self.cam.GetHardwareVersion()
+        self.pub.pprint(get_hardware_info)
+        self.pub.pprint('Firmware Version :'+str(self.cam.CameraFirmwareVersion))
+        self.pub.pprint('Firmware Built :'+str(self.cam.CameraFirmwareBuild))
+
+    def get_software_info(self):
+        get_software_info = self.cam.GetSoftwareVersion()
+        self.pub.pprint(get_software_info)
+        self.pub.pprint('Driver Version :'+str(self.cam.vxdVer))
+        self.pub.pprint('DLL Version :'+str(self.cam.dllVer))
 
     #-------------------------------------------------------------------------
     #  Start / Stop live camera
@@ -183,11 +204,20 @@ class AndorCtrl(Thread):
         if self.cam is None:
             raise Exception("Camera not connected!")
 
+        self.get_hardware_info()
+        self.get_software_info()
+
         self.cam.SetReadMode(self.ReadMode)
         self.cam.SetAcquisitionMode(self.AcqMode)
+        self.cam.SetFrameTransferMode(self.ft_mode)
+
+        
 
         self.cam.SetKineticCycleTime(0)
-        self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
+        # Does nothing: returns DRV_NOT_AVAILABLE - feature is not supported - firmware/driver update maybe ?
+        # self.cam.SetIsolatedCropMode(1, self.height, self.width, self.vbin, self.hbin)
+        self.set_camera_link_mode(0)
+        
         self.cam.SetImage(self.hbin, self.vbin, self.Lower_left_X, self.Lower_left_X+np.int(self.width)-1, self.Lower_left_Y, self.Lower_left_Y+np.int(self.height)-1)
         #self.cam.SetImage( ??bin , SPECTRAL_bin, ??start, OPD_DIM, ??, SPECTRAL_DIM)
 
@@ -203,6 +233,7 @@ class AndorCtrl(Thread):
             self.gain = 0
         self.cam.SetEMCCDGain(self.gain)
 
+        self.set_camera_link_mode(self.camera_link)
 
         self.cam.GetAcquisitionTimings()
         self.cam.GetEMCCDGain()
@@ -309,6 +340,35 @@ class AndorCtrl(Thread):
     def set_multi_track(self, number, height, offset, bottom, gap):
         self.cam.SetReadMode(1)
         self.cam.SetMultiTrack(number, height, offset, bottom, gap)
+
+
+
+    def set_camera_link_mode(self,mode):
+        #if mode == 0:
+        #    self.pub.pprint("Camera link is set off")
+
+        #if mode == 1:
+        #    self.pub.pprint("Camera link is set on")
+        
+        Set = self.cam.SetCameraLinkMode(mode)
+
+        if self.cam.set_camera_link_mode_error == 20002:
+            if mode == 0:
+                self.pub.pprint("Camera link is set off")
+
+            if mode == 1:
+                self.pub.pprint("Camera link is set on")
+
+        else:
+            self.pub.pprint("Camera link mode : Something went wrong. Error code ="+str(self.cam.set_camera_link_mode_error))
+
+
+    def get_bits(self):
+        self.cam.GetBitDepth()
+        nbits=self.cam.bits
+        self.pub.pprint("Number of bits is: " + str(nbits))
+
+
 
     #-------------------------------------------------------------------------
     #  Exposure time // Gain
@@ -557,6 +617,26 @@ class AndorCtrl(Thread):
                 final_filename = filename+'_'+str(i)
 
             self.acq_cube(N_frames,filename = final_filename)
+
+    def acq_wavelength_cal(self, wavelength):
+        if wavelength == 'Darks':
+            self.pub.pprint("Starting darks for wavelength calibration")
+            date = datetime.datetime.today().strftime('%Y%m%d')
+            self.cam.SetShutter(0, 2, 50, 50)
+            time.sleep(0.2)
+            self.acq_cube(50,filename = date+'_WaveCals_Darks_0')
+            self.cam.SetShutter(0, 1, 50, 50)
+
+        else:
+            self.pub.pprint("Starting calibration for "+str(wavelength)+" nm")
+            date = datetime.datetime.today().strftime('%Y%m%d')
+            self.acq_cube(50,filename = date+'_WaveCals_'+str(wavelength)+'nm_0')
+
+
+
+
+
+
 
     def acq_dark_old(self):
         '''

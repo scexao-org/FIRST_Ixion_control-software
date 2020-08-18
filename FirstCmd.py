@@ -15,7 +15,11 @@ import time
 import os
 import zmq
 from threading import Thread
+
+
+
 from andorCtrl_science import AndorCtrl
+#from memsCtrl import MemsCtrl
 
 
 ################################################################################
@@ -29,10 +33,17 @@ port_PUB_print = "tcp://*:5551"
 
 client_address_print = b"P"
 client_address_andor = b"A"
+client_address_mems = b"M"
 
-component_address = {'print': client_address_print, 
-                     'andor': client_address_andor, 
+component_address = {'print': client_address_print,
+                     'andor': client_address_andor,
+                     'mems': client_address_mems,
                      'cmd': 'cmd'}
+
+
+# Mems
+# ACTIVE_MEMS_SEGS = [22, 11, 27, 20, 2, 5, 36, 17, 31]
+ACTIVE_MEMS_SEGS = [37, 9, 24, 35, 7, 4, 33, 15, 28]  # new mapp, 15_11_2019
 
 
 ################################################################################
@@ -124,6 +135,44 @@ class FirstCommand:
         self.pub.send_pyobj(kwargs)
 
 
+################################################################################
+##################              Andor functions             ####################
+################################################################################
+
+
+################################################################################
+##################              Mems functions              ####################
+################################################################################
+
+
+def mems_seg_on(segment):
+    """Set a specific segment to the FLAT position (0,0,0)."""
+    m.set_pos(segment, 0, 0, 0)
+
+
+def mems_all_on():
+    """Set all the segments to the FLAT position (0,0,0)."""
+    for seg in ACTIVE_MEMS_SEGS:
+        mems_seg_on(seg)
+        time.sleep(0.1)
+
+
+def mems_seg_off(segment):
+    """Set a specific segment to the OFF position (0,3,3)."""
+    m.set_pos(segment, 0, 3, 3)
+
+
+def mems_all_off():
+    """Set all the segments to the OFF position (0,3,3)."""
+    for seg in ACTIVE_MEMS_SEGS:
+        mems_seg_off(seg)
+        time.sleep(0.1)
+
+
+################################################################################
+##################               ODL functions              ####################
+################################################################################
+
 
 ################################################################################
 ##################             Global functions             ####################
@@ -131,7 +180,11 @@ class FirstCommand:
 
 
 def close(component, force_quit=False):
-    """Close 'component' process"""
+    """
+    Close 'component' process.
+    Execute close('cmd') to close this process (the command terminal).
+    Execute close('print', force_quit=True) to close the print terminal.
+    """
     command = "done()"
     if component == 'print':
         if force_quit:
@@ -142,8 +195,14 @@ def close(component, force_quit=False):
         pub_print.close()
         context.term()
         os._exit(1)
+    elif component == 'odl':
+        for odl_i in range(9):
+            kwargs = {"address": component_address['odl' + str(odl_i+1)],
+                      "command": command}
+            publisher_comps.send_pyobj(kwargs)
     else:
-        kwargs = {"address": component_address[component], "command": command}
+        kwargs = {"address": component_address[component],
+                  "command": command}
         publisher_comps.send_pyobj(kwargs)
 
 
@@ -155,11 +214,6 @@ def done():
     else:
         close('cmd')
 
-"""
-def pprint(msg):
-    command = "andor_pub.pprint(" + str(msg) + ")"
-    publisher_comps.send_multipart([client_address, command.encode('UTF-8')])
-"""
 
 ################################################################################
 ##################               Main process               ####################
@@ -174,6 +228,7 @@ def pprint(msg):
 
 """
 
+
 if __name__ == "__main__":
     ### Initialize com ###
     context = zmq.Context()
@@ -182,19 +237,26 @@ if __name__ == "__main__":
 
 
     ### Initialise the andor command class ###
-    # a = AndorCmd(publisher_comps, client_address_andor)
     a = FirstCommand(AndorCtrl, publisher_comps, client_address_andor)
 
 
-    ### Print the top messages in the terminal ###
-    print("\na. controls the camera graphing and functions.")
-    print("Type a.something? to view documentation about 'something'")
-    print("camera. controls the camera directly through the Andor dll/SDK")
-    print("Type pprint() to print. It will be printed in the other terminal.")
-    print("Type done() to disconnect the camera and close viewing")
-    print("Start entering commands only when the other terminal indicates camera is initialized.\n")
+    ### Initialize the Mems command class ###
+    # m = FirstCommand(MemsCtrl, publisher_comps, client_address_mems)
+
+
+    ### Print top messages in the terminal ###
+    print("\n#####  Info  #####")
+    print("a. controls the camera.")
+    print("m. controls the mems.")
+    print("odlX. controls the odl number X.")
+    print("Type done() to close everything.")
+    print("Type close('component') to just close 'component'.")
+    print("Start entering commands to a component only when the 'print' terminal indicates the component is initialized.")
+    print("#####  Info  #####")
+
 
 
     ### Initialise com with the print terminal ###
     pub_print = context.socket(zmq.PUB)
     pub_print.bind(port_PUB_print)
+

@@ -5,8 +5,7 @@ import numpy as np
 import time
 from astropy.io import fits
 from pyMilk.interfacing.isio_shmlib import SHM 
-
-
+import datetime
 
 #def get(N_frames, exptime, gain, temperature, filename=None):
 
@@ -16,6 +15,11 @@ gain 			= np.int(sys.argv[3])
 temperature 	= np.int(sys.argv[4])
 file_name   	= sys.argv[5]
 SAVEFILEPATH 	= sys.argv[6]
+
+date = datetime.datetime.today().strftime('%Y%m%d')
+save_dir = SAVEFILEPATH+date+'/'
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
 
 
 print(str(N_frames)+' Frames')
@@ -34,9 +38,9 @@ header = fits.Header()
 header['ExpTime'] = np.round(exptime, decimals=3)
 header['Gain'] = gain
 header['Temp'] = temperature
-fits.writeto(SAVEFILEPATH + file_name + '.fits', imCube, header, overwrite=True)
-print("Image saved in '" + SAVEFILEPATH + file_name + ".fits'\n")
+fits.writeto(save_dir + file_name + '.fits', imCube, header, overwrite=True)
+print("Image saved in '" + save_dir + file_name + ".fits'\n")
 
-os.system("ds9 " + SAVEFILEPATH + file_name + ".fits &")
+os.system("ds9 " + save_dir + file_name + ".fits &")
 
 
