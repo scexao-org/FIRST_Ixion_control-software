@@ -22,8 +22,7 @@ if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
 
-print(str(N_frames)+' Frames')
-print(str(exptime)+' ms')
+print(str(N_frames)+' Frames '+str(exptime)+' ms each')
 
 # Defines the shared mem where the images are + create image cube
 im = SHM('ixionim')
@@ -41,6 +40,6 @@ header['Temp'] = temperature
 fits.writeto(save_dir + file_name + '.fits', imCube, header, overwrite=True)
 print("Image saved in '" + save_dir + file_name + ".fits'\n")
 
-os.system("ds9 " + save_dir + file_name + ".fits &")
+#os.system("ds9 " + save_dir + file_name + ".fits &")
 
 
